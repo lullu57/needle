@@ -16,8 +16,9 @@
       <p>
         Start <code>npm run dev</code> from the Needle project folder, then
         connect to <code>http://127.0.0.1:4199</code>. Add your Gateway API key
-        to the project’s <code>.env</code> file. Leave the access token blank
-        for local use.
+        to the project’s <code>.env</code> file. Set a separate
+        <code>NEEDLE_ACCESS_TOKEN</code> in that file and enter the same access
+        token below.
       </p>
       <form id="settings">
         <label
@@ -27,12 +28,12 @@
             required
             placeholder="http://127.0.0.1:4199" /></label
         ><label
-          >SERVER ACCESS TOKEN <span>(optional)</span
-          ><input
+          >SERVER ACCESS TOKEN<input
             id="token"
+            required
             type="password"
             autocomplete="off"
-            placeholder="Only for a protected deployment" /></label
+            placeholder="Your NEEDLE_ACCESS_TOKEN" /></label
         ><button>Save connection ↗</button>
         <p id="status" role="status"></p>
       </form>

@@ -7,10 +7,10 @@
   const host = document.createElement("div");
   host.id = "needle-search-host";
   host.style.cssText = "position:fixed;top:20px;right:20px;z-index:2147483647";
-  const shadow = host.attachShadow({ mode: "open" });
+  const shadow = host.attachShadow({ mode: "closed" });
   shadow.innerHTML = `<style>
  :host{all:initial}*{box-sizing:border-box}.dock{width:min(510px,calc(100vw - 40px));background:#26362d;color:#f8faf3;border-radius:18px;box-shadow:0 12px 65px #0004;font:13px/1.5 system-ui;padding:15px}.top{display:flex;align-items:center;gap:9px}.brand{display:flex;align-items:center;gap:7px;font-size:18px;font-weight:750;letter-spacing:-.8px;margin-right:auto;color:#d5f58d}.brand svg{width:27px;height:27px;flex-shrink:0}button{font:inherit;cursor:pointer;border:0;border-radius:7px;background:transparent;color:#b9c6b7;padding:6px 9px}button:hover{background:#ffffff12;color:white}.search{display:flex;align-items:center;gap:8px;border-bottom:1px solid #ffffff26;margin-top:13px;padding-bottom:12px}input{width:100%;min-width:0;border:0;background:transparent;outline:none;color:white;font:17px system-ui}input::placeholder{color:#a3b0a0}.go{background:#d5f58d;color:#26362d;font-size:19px}.status{display:flex;align-items:center;gap:6px;margin-top:11px}.label{flex:1;color:#dbe5d6}.nav{background:#ffffff0d}.detail{margin:8px 0 0;color:#9ead99;font-size:11px}.error{color:#ffcca8}button:focus-visible,input:focus-visible{outline:2px solid #d5f58d;outline-offset:2px}
- </style><section class="dock" role="dialog" aria-label="Find with Needle"><div class="top"><span class="brand"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="9.4" fill="#c9f078"/><path d="m9 25 12-17 3 2-12 17Zm9-13 3 2" fill="none" stroke="#26362d" stroke-width="2.4" stroke-linecap="round"/></svg><span>needle.</span></span><button class="settings" aria-label="Open settings">⚙</button><button class="close" aria-label="Close Needle">✕</button></div><form class="search"><input aria-label="Find what you mean" placeholder="Find what you mean…" maxlength="400"><button class="go" aria-label="Search">↗</button></form><div class="status"><span class="label" aria-live="polite">A thought, a question, a half-remembered idea.</span><button class="nav prev" aria-label="Previous match">↑</button><button class="nav next" aria-label="Next match">↓</button></div><p class="detail"></p></section>`;
+ </style><section class="dock" role="dialog" aria-label="Find with Needle"><div class="top"><span class="brand"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="9.4" fill="#c9f078"/><path d="m9 25 12-17 3 2-12 17Zm9-13 3 2" fill="none" stroke="#26362d" stroke-width="2.4" stroke-linecap="round"/></svg><span>needle.</span></span><button class="settings" aria-label="Open settings">⚙</button><button class="close" aria-label="Close Needle">✕</button></div><form class="search"><input aria-label="Find what you mean" placeholder="Find what you mean…" maxlength="400"><button type="button" class="go" aria-label="Search">↗</button></form><div class="status"><span class="label" aria-live="polite">A thought, a question, a half-remembered idea.</span><button class="nav prev" aria-label="Previous match">↑</button><button class="nav next" aria-label="Next match">↓</button></div><p class="detail"></p></section>`;
   document.documentElement.append(host);
   const $ = (s) => shadow.querySelector(s),
     input = $("input"),
@@ -19,7 +19,6 @@
   let active = 0,
     matches = [],
     generation = 0,
-    timer,
     closed = false,
     blocks = [],
     highlightStyle = null;
@@ -123,7 +122,6 @@
     paint();
   }
   async function search() {
-    clearTimeout(timer);
     const current = ++generation;
     collect();
     clearHighlights();
@@ -170,7 +168,6 @@
   function close() {
     closed = true;
     generation++;
-    clearTimeout(timer);
     clearHighlights();
     host.remove();
     document.removeEventListener("keydown", key, true);
@@ -194,23 +191,26 @@
     chrome.runtime.sendMessage({ type: "NEEDLE_SETTINGS" });
   $(".prev").onclick = () => move(-1);
   $(".next").onclick = () => move(1);
-  $(".search").onsubmit = (event) => {
-    event.preventDefault();
-    search();
+  // Form submission can be triggered by page script via requestSubmit().
+  // Only trusted button clicks and Enter presses may start inference.
+  $(".search").onsubmit = (event) => event.preventDefault();
+  $(".go").onclick = (event) => {
+    if (event.isTrusted) search();
   };
   input.oninput = () => {
+    // Browser editing commands can emit trusted input without user intent.
+    // Editing only invalidates results; it never starts a paid search.
     generation++;
-    clearTimeout(timer);
     clearHighlights();
     matches = [];
-    label.textContent = "…";
-    timer = setTimeout(search, 700);
+    label.textContent = "Press Enter or click Search.";
   };
   input.onkeydown = (event) => {
-    if (event.key === "Enter" && matches.length) {
-      event.preventDefault();
-      move(event.shiftKey ? -1 : 1);
-    }
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (!event.isTrusted || event.repeat || event.isComposing) return;
+    if (matches.length) move(event.shiftKey ? -1 : 1);
+    else search();
   };
   collect();
   input.focus();
