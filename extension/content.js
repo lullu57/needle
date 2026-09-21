@@ -171,6 +171,18 @@
     clearHighlights();
     host.remove();
     document.removeEventListener("keydown", key, true);
+    for (const type of ["keydown", "keypress", "keyup"])
+      window.removeEventListener(type, containKeyboard, true);
+  }
+  function containKeyboard(event) {
+    if (!event.composedPath().includes(host)) return;
+    // A closed shadow root still exposes composed keyboard events to the page.
+    // Capture before document shortcuts, preserving native editing and Tab.
+    event.stopImmediatePropagation();
+    if (event.type !== "keydown") return;
+    key(event);
+    // Stopping at window also skips our target handler; dispatch it here.
+    if (!closed && shadow.activeElement === input) inputKey(event);
   }
   function key(event) {
     if (event.key === "Escape") {
@@ -185,6 +197,8 @@
     }
   }
   host.addEventListener("needle-close", close);
+  for (const type of ["keydown", "keypress", "keyup"])
+    window.addEventListener(type, containKeyboard, true);
   document.addEventListener("keydown", key, true);
   $(".close").onclick = close;
   $(".settings").onclick = () =>
@@ -205,13 +219,14 @@
     matches = [];
     label.textContent = "Press Enter or click Search.";
   };
-  input.onkeydown = (event) => {
+  function inputKey(event) {
     if (event.key !== "Enter") return;
     event.preventDefault();
     if (!event.isTrusted || event.repeat || event.isComposing) return;
     if (matches.length) move(event.shiftKey ? -1 : 1);
     else search();
-  };
+  }
+  input.onkeydown = inputKey;
   collect();
   input.focus();
 })();
