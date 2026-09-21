@@ -120,7 +120,8 @@ export default function Dialogs({
                   In extension settings, use <code>{location.origin}</code> as
                   the server. Click the Needle icon on any normal webpage, or
                   press Cmd+Shift+F on Mac or Ctrl+Shift+F on Windows/Linux.
-                  Leave the access token blank for local setup.
+                  Enter the access token from your backend’s NEEDLE_ACCESS_TOKEN
+                  setting.
                 </span>
               </li>
             </ol>
@@ -168,7 +169,7 @@ export default function Dialogs({
               server.
             </p>
             <label>
-              SERVER ACCESS TOKEN <span>(optional)</span>
+              SERVER ACCESS TOKEN
               <input
                 type="password"
                 value={token}
@@ -176,7 +177,7 @@ export default function Dialogs({
                   setToken(e.target.value);
                   sessionStorage.setItem("needle-token", e.target.value);
                 }}
-                placeholder="Only for a protected deployment"
+                placeholder="Your NEEDLE_ACCESS_TOKEN"
               />
             </label>
             <button className="primary" onClick={() => setModal(null)}>

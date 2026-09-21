@@ -4,7 +4,6 @@
 
 <img width="1379" height="685" alt="Screenshot 2026-09-20 at 12 28 10 AM" src="https://github.com/user-attachments/assets/1058589f-d686-4b3d-8873-5eb800ba35b3" />
 
-
 ## Features
 
 - **Search by meaning.** Ask a question, describe an idea, or type a half-remembered detail.
@@ -39,7 +38,10 @@ Open `.env` in your editor and fill in:
 
 ```dotenv
 AI_GATEWAY_API_KEY=your_vercel_ai_gateway_key
+NEEDLE_ACCESS_TOKEN=your_separate_random_access_token
 ```
+
+Generate the separate access token with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` and save it as `NEEDLE_ACCESS_TOKEN` in `.env`. Enter that same token in the playground’s **How it works → Server access token** field and the extension settings. Never use your AI Gateway key as the access token.
 
 ## Run the App
 
@@ -62,7 +64,7 @@ No separate extension build is needed to load the source:
 1. Open `chrome://extensions` in Chrome and enable **Developer mode**.
 2. Choose **Load unpacked** and select **`awesome-llm-apps/advanced_llm_apps/needle/extension/`** folder. This is the folder containing `manifest.json`. Do not select the repository root or a ZIP file.
 3. Pin Needle from Chrome’s puzzle-piece menu. The settings page opens on first installation; you can also right-click the icon and choose **Options**.
-4. Set **Needle server URL** to `http://127.0.0.1:4199`. Leave **Server access token** blank for the default local setup. Click **Save connection**.
+4. Set **Needle server URL** to `http://127.0.0.1:4199`. Set **Server access token** to your backend’s `NEEDLE_ACCESS_TOKEN`. Click **Save connection**.
 5. Open a normal webpage and click the Needle icon, or press **Cmd+F** on macOS / **Ctrl+F** elsewhere. Type what you want to find.
 
 If the shortcut is already in use, assign one at `chrome://extensions/shortcuts`.
@@ -75,7 +77,7 @@ If the shortcut is already in use, assign one at `chrome://extensions/shortcuts`
 
 ### On a webpage
 
-Keep `npm run dev` running, open the webpage you want to search, and click the pinned Needle icon. Type what you mean, such as “costs beyond the advertised price” or “what happens if I cancel?” Needle searches after a short pause and highlights relevant source sentences. 
+Keep `npm run dev` running, open the webpage you want to search, and click the pinned Needle icon. Type what you mean, such as “costs beyond the advertised price” or “what happens if I cancel?” Press **Enter** or click the search arrow to search and highlight relevant source sentences. Typing alone does not send a request; this prevents page scripts from triggering paid searches through browser editing commands.
 
 ### In the React app
 
@@ -102,7 +104,7 @@ For a PDF with selectable text, copy the relevant text and use **Bring your own 
 | Setting               | Where to put it                                                | Purpose                                                                 |
 | --------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `AI_GATEWAY_API_KEY`  | Backend `.env`, or Vercel project environment variables        | Pays for and authenticates Jev inference; never goes into the extension |
-| `NEEDLE_ACCESS_TOKEN` | Backend environment, then the same value in extension settings | Protects access to your backend; required on Vercel, optional locally   |
+| `NEEDLE_ACCESS_TOKEN` | Backend environment, then the same value in extension settings | Protects access to your backend; required locally and on Vercel         |
 | Needle server URL     | Extension settings                                             | Your local backend or your own HTTPS deployment                         |
 
 For the web playground on a protected backend, enter the access token in **How it works → Server access token**. This is a separate app-specific token, not the Gateway key. Whoever owns the backend’s Gateway key pays for its searches.
@@ -119,7 +121,7 @@ For the web playground on a protected backend, enter the access token in **How i
 3. Deploy. In extension settings, use your deployment’s HTTPS origin and the access token. Allow access to that server when Chrome prompts you.
 4. Test a real search. `/api/health` confirms whether a key is configured; it does not validate the key or account credits.
 
-The backend refuses search requests on Vercel if `NEEDLE_ACCESS_TOKEN` is missing. Use the token only for your own installation or a small trusted group. A general public service needs individual user authentication, rate limits, quotas and a billing decision; this template does not implement those. If Vercel Deployment Protection is enabled, the extension cannot complete its browser-login challenge. Use a backend reachable by the extension and retain Needle’s token check.
+The backend refuses search requests if `NEEDLE_ACCESS_TOKEN` is missing, including locally. Search requests require `Content-Type: application/json` and the token in `x-needle-token`. Use the token only for your own installation or a small trusted group. A general public service needs individual user authentication, rate limits, quotas and a billing decision; this template does not implement those. If Vercel Deployment Protection is enabled, the extension cannot complete its browser-login challenge. Use a backend reachable by the extension and retain Needle’s token check.
 
 ## Project Structure
 

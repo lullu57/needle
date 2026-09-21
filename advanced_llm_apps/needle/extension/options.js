@@ -9,6 +9,7 @@ chrome.storage.local.get(["server", "token"]).then((data) => {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
+    if (!token.value.trim()) throw new Error("Enter your Needle access token.");
     const url = new URL(server.value);
     if (
       !["http:", "https:"].includes(url.protocol) ||
