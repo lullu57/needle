@@ -43,9 +43,21 @@ function fixture({ matched = false } = {}) {
     },
   };
   const messages = [];
+  const keyboardListeners = new Map();
   const timers = new Map();
   let timerID = 0;
   const context = {
+    window: {
+      addEventListener(type, listener, capture) {
+        assert.equal(capture, true);
+        keyboardListeners.set(type, listener);
+      },
+      removeEventListener(type, listener, capture) {
+        assert.equal(capture, true);
+        assert.equal(keyboardListeners.get(type), listener);
+        keyboardListeners.delete(type);
+      },
+    },
     Range: class {
       selectNodeContents() {}
     },
@@ -97,6 +109,27 @@ function fixture({ matched = false } = {}) {
     messages,
     timers,
     mode,
+    keyboardListeners,
+    keyboard(type, extra = {}, inside = true) {
+      shadow.activeElement = controls.get("input");
+      const e = event({
+        type,
+        key: "k",
+        composedPath: () => (inside ? [host] : []),
+        stopImmediatePropagation() {
+          this.stopped = true;
+        },
+        stopPropagation() {
+          this.stopped = true;
+        },
+        preventDefault() {
+          this.prevented = true;
+        },
+        ...extra,
+      });
+      keyboardListeners.get(type)?.(e);
+      return e;
+    },
     flush() {
       for (const [id, fn] of timers) {
         timers.delete(id);
@@ -121,6 +154,38 @@ test("page-generated events and UA submit events cannot start extension searches
   f.controls.get(".search").onsubmit(event({ isTrusted: true }));
   f.flush();
   assert.equal(f.messages.length, 0);
+});
+
+test("Needle contains all keyboard phases without cancelling native editing", () => {
+  const f = fixture();
+  for (const type of ["keydown", "keypress", "keyup"]) {
+    for (const key of ["k", "Tab", "ArrowLeft", "Backspace"]) {
+      const inside = f.keyboard(type, { key });
+      assert.equal(inside.stopped, true);
+      assert.equal(inside.prevented, undefined);
+      assert.equal(f.keyboard(type, { key }, false).stopped, undefined);
+    }
+  }
+  assert.equal(f.messages.length, 0);
+});
+
+test("contained Enter preserves search guards and Escape removes keyboard guards", () => {
+  const f = fixture();
+  for (const extra of [
+    { isTrusted: false },
+    { isTrusted: true, repeat: true },
+    { isTrusted: true, isComposing: true },
+  ]) {
+    assert.equal(
+      f.keyboard("keydown", { key: "Enter", ...extra }).prevented,
+      true,
+    );
+  }
+  assert.equal(f.messages.length, 0);
+  f.keyboard("keydown", { key: "Enter", isTrusted: true });
+  assert.equal(f.messages.length, 1);
+  f.keyboard("keydown", { key: "Escape", isTrusted: true });
+  assert.equal(f.keyboardListeners.size, 0);
 });
 test("trusted click and Enter retain search and original extraction", () => {
   for (const activate of [
